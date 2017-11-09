@@ -1,0 +1,24 @@
+{
+  "name": "extended-inquiry-response",
+  "version": "0.0.0",
+  "description": "Bluetooth EIR encoder and decoder",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard --verbose && tape test/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kapetan/extended-inquiry-response.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kapetan/extended-inquiry-response/issues"
+  },
+  "homepage": "https://github.com/kapetan/extended-inquiry-response#readme",
+  "devDependencies": {
+    "tape": "^4.8.0"
+  },
+  "dependencies": {
+    "standard": "^10.0.3"
+  }
+}
