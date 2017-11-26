@@ -15,6 +15,10 @@ var uuidToBuffer = function (uuid) {
   return Buffer.from(uuid, 'hex')
 }
 
+var assert = function (cond) {
+  if (!cond) throw new RangeError('invalid length')
+}
+
 var encode = function (obj, buffer, offset) {
   if (!buffer) buffer = Buffer.allocUnsafe(encodingLength(obj))
   if (!offset) offset = 0
@@ -47,7 +51,7 @@ var encode = function (obj, buffer, offset) {
 
     if (uuid16bit.length) {
       buffer.writeUInt8(1 + 2 * uuid16bit.length, offset++)
-      buffer.writeUInt8(0x02, offset++)
+      buffer.writeUInt8(obj.serviceUuid16bitComplete ? 0x03 : 0x02, offset++)
 
       uuid16bit.forEach(function (uuid) {
         uuid.copy(buffer, offset)
@@ -57,7 +61,7 @@ var encode = function (obj, buffer, offset) {
 
     if (uuid32bit.length) {
       buffer.writeUInt8(1 + 4 * uuid32bit.length, offset++)
-      buffer.writeUInt8(0x04, offset++)
+      buffer.writeUInt8(obj.serviceUuid32bitComplete ? 0x05 : 0x04, offset++)
 
       uuid32bit.forEach(function (uuid) {
         uuid.copy(buffer, offset)
@@ -67,7 +71,7 @@ var encode = function (obj, buffer, offset) {
 
     if (uuid128bit.length) {
       buffer.writeUInt8(1 + 16 * uuid128bit.length, offset++)
-      buffer.writeUInt8(0x06, offset++)
+      buffer.writeUInt8(obj.serviceUuid128bitComplete ? 0x07 : 0x06, offset++)
 
       uuid128bit.forEach(function (uuid) {
         uuid.copy(buffer, offset)
@@ -78,7 +82,7 @@ var encode = function (obj, buffer, offset) {
   if (obj.localName) {
     var len = Buffer.byteLength(obj.localName, 'utf-8')
     buffer.writeUInt8(len + 1, offset++)
-    buffer.writeUInt8(0x08, offset++)
+    buffer.writeUInt8(obj.localNameComplete ? 0x09 : 0x08, offset++)
     buffer.write(obj.localName, offset, len, 'utf-8')
     offset += len
   }
@@ -98,7 +102,93 @@ var encode = function (obj, buffer, offset) {
 }
 
 var decode = function (buffer, start, end) {
+  if (!start) start = 0
+  if (!end) end = buffer.length
 
+  var obj = {}
+  var length = buffer[start++]
+
+  while (start < buffer.length && length && start + length <= end) {
+    var type = buffer[start++]
+    var data = null
+
+    switch (type) {
+      case 0x01:
+        assert(length === 2)
+        data = buffer[start++]
+        obj.flags = {}
+
+        if (data & 0x01) obj.flags.leLimitedDiscoverableMode = true
+        if (data & 0x02) obj.flags.leGeneralDiscoverableMode = true
+        if (data & 0x04) obj.flags.bredrNotSupported = true
+        if (data & 0x08) obj.flags.simultaneousLeAndBredrController = true
+        if (data & 0x10) obj.flags.simultaneousLeAndBredrHost = true
+        break
+      case 0x03:
+        obj.serviceUuid16bitComplete = true
+      case 0x02: // eslint-disable-line no-fallthrough
+        assert(length % 2 === 1)
+        if (!obj.service) obj.service = []
+
+        while (length > 1) {
+          data = buffer.slice(start, start + 2)
+          obj.service.push(data)
+          length -= data.length
+          start += data.length
+        }
+
+        break
+      case 0x05:
+        obj.serviceUuid32bitComplete = true
+      case 0x04: // eslint-disable-line no-fallthrough
+        assert(length % 4 === 1)
+        if (!obj.service) obj.service = []
+
+        while (length > 1) {
+          data = buffer.slice(start, start + 4)
+          obj.service.push(data)
+          length -= data.length
+          start += data.length
+        }
+
+        break
+      case 0x07:
+        obj.serviceUuid128bitComplete = true
+      case 0x06: // eslint-disable-line no-fallthrough
+        assert(length % 16 === 1)
+        if (!obj.service) obj.service = []
+
+        while (length > 1) {
+          data = buffer.slice(start, start + 16)
+          obj.service.push(data)
+          length -= data.length
+          start += data.length
+        }
+
+        break
+      case 0x09:
+        obj.localNameComplete = true
+      case 0x08: // eslint-disable-line no-fallthrough
+        data = buffer.toString('utf-8', start, start + length - 1)
+        obj.localName = data
+        start += (length - 1)
+        break
+      case 0x0a:
+        assert(length === 2)
+        data = buffer.readInt8(start++)
+        obj.txPowerLevel = data
+        break
+      case 0xff:
+        data = buffer.slice(start, start + length - 1)
+        obj.manufacturerSpecificData = data
+        start += (length - 1)
+        break
+    }
+
+    length = buffer[start++]
+  }
+
+  return obj
 }
 
 var encodingLength = function (obj) {

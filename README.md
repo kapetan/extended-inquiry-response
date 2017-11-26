@@ -19,6 +19,6 @@ var buffer = eir.encode({
   ],
   localName: 'test-name',
   txPowerLevel: 55,
-  manufacturerSpecificData: buffer(0xde, 0xad, 0xfe, 0xad)
+  manufacturerSpecificData: Buffer.from('hello')
 })
 ```
