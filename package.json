@@ -1,6 +1,6 @@
 {
   "name": "extended-inquiry-response",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Bluetooth EIR encoder and decoder",
   "main": "index.js",
   "scripts": {
